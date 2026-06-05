@@ -119,6 +119,18 @@ export interface Draft {
   updatedAt: string;
 }
 
+export interface DataFile {
+  id: string;
+  name: string;
+  type: 'csv' | 'excel' | 'image' | 'pdf' | 'other';
+  fileData?: Blob;
+  metadata: Record<string, unknown>;
+  folder?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Comment {
   id?: number;
   draftId: number;
@@ -149,6 +161,7 @@ class ThesisDB extends Dexie {
   todos!: Table<Todo>;
   drafts!: Table<Draft>;
   comments!: Table<Comment>;
+  dataFiles!: Table<DataFile>;
 
   constructor() {
     super('ThesisResearchDB');
@@ -194,6 +207,20 @@ class ThesisDB extends Dexie {
       todos: '++id, completed, priority, dueDate, category, createdAt',
       drafts: '++id, title, type, status, parentId, shareLink, createdAt, updatedAt',
       comments: '++id, draftId, resolved, createdAt',
+    });
+
+    // Version 5: Add dataFiles table for Data page uploads
+    this.version(5).stores({
+      sources: '++id, title, doi, url, createdAt',
+      interviews: '++id, interviewee, date, createdAt, updatedAt',
+      interviewRequests: '++id, status, participantEmail, createdAt',
+      themes: '++id, name, createdAt',
+      themeOccurrences: '++id, themeId, interviewId, createdAt',
+      pinnedItems: '++id, type, referenceId, createdAt',
+      todos: '++id, completed, priority, dueDate, category, createdAt',
+      drafts: '++id, title, type, status, parentId, shareLink, createdAt, updatedAt',
+      comments: '++id, draftId, resolved, createdAt',
+      dataFiles: 'id, name, type, folder, createdAt, updatedAt',
     });
   }
 }

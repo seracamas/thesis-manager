@@ -90,9 +90,9 @@ export const Interviews = () => {
       const loadOccurrences = async () => {
         const occs = await getOccurrencesByInterview(viewingInterview.id!);
         const occsWithColors = occs.map(occ => {
-          const theme = themes.find(t => t.id === occ.themeId);
+          const theme = themes.find(t => String(t.id) === String(occ.themeId));
           return {
-            themeId: occ.themeId,
+            themeId: Number(occ.themeId),
             startIndex: occ.startIndex || 0,
             endIndex: occ.endIndex || 0,
             color: theme?.color || '#3b82f6',
@@ -159,9 +159,9 @@ export const Interviews = () => {
     if (interview.id) {
       const occs = await getOccurrencesByInterview(interview.id);
       const occsWithColors = occs.map(occ => {
-        const theme = themes.find(t => t.id === occ.themeId);
+        const theme = themes.find(t => String(t.id) === String(occ.themeId));
         return {
-          themeId: occ.themeId,
+          themeId: Number(occ.themeId),
           startIndex: occ.startIndex || 0,
           endIndex: occ.endIndex || 0,
           color: theme?.color || '#3b82f6',
@@ -454,9 +454,9 @@ export const Interviews = () => {
                       if (viewingInterview.id) {
                         const occs = await getOccurrencesByInterview(viewingInterview.id);
                         const occsWithColors = occs.map(occ => {
-                          const theme = themes.find(t => t.id === occ.themeId);
+                          const theme = themes.find(t => String(t.id) === String(occ.themeId));
                           return {
-                            themeId: occ.themeId,
+                            themeId: Number(occ.themeId),
                             startIndex: occ.startIndex || 0,
                             endIndex: occ.endIndex || 0,
                             color: theme?.color || '#3b82f6',

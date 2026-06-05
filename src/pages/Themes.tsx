@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useThemesStore, useThemeOccurrencesStore, useActivityStore } from '../stores';
 import { useInterviewsStore } from '../stores/interviewsStore';
@@ -33,7 +33,7 @@ export const Themes = () => {
   const [isExporting, setIsExporting] = useState(false);
   
   const [viewMode, setViewMode] = useState<'overview' | 'detail'>('overview');
-  const [selectedThemeId, setSelectedThemeId] = useState<number | null>(null);
+  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
   const [themeOccurrences, setThemeOccurrences] = useState<ThemeOccurrence[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterInterviewId, setFilterInterviewId] = useState<string>('');
@@ -77,6 +77,7 @@ export const Themes = () => {
       error: (error) => {
         console.error('Error in themes live query:', error);
         setLiveThemes([]);
+        fetchThemes();
       }
     });
 
@@ -176,8 +177,17 @@ export const Themes = () => {
     };
   };
 
-  // Filter and sort themes - use liveThemes if available, otherwise fall back to themes from store
-  const themesToUse = liveThemes.length > 0 ? liveThemes : themes;
+  // Merge live query + store so themes appear even if one source fails or lags
+  const themesToUse = useMemo(() => {
+    const merged = new Map<string, Theme>();
+    for (const theme of themes) {
+      merged.set(String(theme.id), theme);
+    }
+    for (const theme of liveThemes) {
+      merged.set(String(theme.id), theme);
+    }
+    return Array.from(merged.values());
+  }, [themes, liveThemes]);
   const filteredThemes = (Array.isArray(themesToUse) ? themesToUse : []).map(theme => {
     // Calculate live stats from occurrences
     const stats = getThemeStats(theme.id);
@@ -239,29 +249,43 @@ export const Themes = () => {
   };
 
   const handleSubmit = async () => {
-    if (editingTheme) {
-      await updateTheme(editingTheme.id, { 
-        name, 
-        description, 
-        color, 
-        memo: memo || undefined,
-        parentThemeId: parentThemeId || null,
-      });
-      await addActivity({ type: 'theme', itemId: editingTheme.id, action: 'updated' });
-    } else {
-      const id = await createTheme({ 
-        name, 
-        description, 
-        color, 
-        memo: memo || undefined,
-        parentThemeId: parentThemeId || null,
-        interviewIds: [],
-        occurrenceCount: 0,
-      });
-      await addActivity({ type: 'theme', itemId: id, action: 'created' });
+    if (!name.trim()) {
+      showError('Theme name is required');
+      return;
     }
-    setIsFormOpen(false);
-    setEditingTheme(null);
+
+    try {
+      if (editingTheme) {
+        await updateTheme(editingTheme.id, { 
+          name: name.trim(), 
+          description: description.trim(), 
+          color, 
+          memo: memo || undefined,
+          parentThemeId: parentThemeId || null,
+        });
+        await addActivity({ type: 'theme', itemId: editingTheme.id, action: 'updated' });
+        success('Theme updated');
+      } else {
+        const id = await createTheme({ 
+          name: name.trim(), 
+          description: description.trim(), 
+          color, 
+          memo: memo || undefined,
+          parentThemeId: parentThemeId || null,
+          interviewIds: [],
+          occurrenceCount: 0,
+        });
+        await addActivity({ type: 'theme', itemId: id, action: 'created' });
+        success('Theme created');
+      }
+      setIsFormOpen(false);
+      setEditingTheme(null);
+      setName('');
+      setDescription('');
+      setMemo('');
+    } catch (err: any) {
+      showError(err.message || 'Failed to save theme');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -857,7 +881,24 @@ Return ONLY a JSON array in this format:
 
       {filteredThemes.length === 0 ? (
         <Card className="p-12 text-center">
-          <p className="text-text-muted text-text-secondary">No themes found</p>
+          <p className="text-text-muted text-text-secondary">
+            {themesToUse.length > 0 && (searchQuery || filterInterviewId)
+              ? 'No themes match your current filters.'
+              : 'No themes found'}
+          </p>
+          {themesToUse.length > 0 && filterInterviewId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => setFilterInterviewId('')}
+            >
+              Clear interview filter
+            </Button>
+          )}
+          {themesToUse.length === 0 && (
+            <p className="text-sm text-text-muted mt-2">Click &quot;New Theme&quot; to create your first theme.</p>
+          )}
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db } from '../utils/db';
+import { db, initializeDatabase } from '../utils/db';
 import type { DataFile } from '../types';
 
 interface DataFilesState {
@@ -24,11 +24,13 @@ export const useDataFilesStore = create<DataFilesState>((set, get) => ({
   fetchDataFiles: async () => {
     set({ isLoading: true });
     try {
+      await initializeDatabase();
       const files = await db.dataFiles.orderBy('updatedAt').reverse().toArray();
-      set({ dataFiles: files, isLoading: false });
+      set({ dataFiles: files as DataFile[], isLoading: false });
     } catch (error) {
       console.error('Failed to fetch data files:', error);
       set({ isLoading: false });
+      throw error;
     }
   },
 
@@ -37,6 +39,7 @@ export const useDataFilesStore = create<DataFilesState>((set, get) => ({
   },
 
   createDataFile: async (fileData) => {
+    await initializeDatabase();
     const now = new Date().toISOString();
     const file: DataFile = {
       ...fileData,

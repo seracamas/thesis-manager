@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db } from '../utils/db';
+import { db, initializeDatabase } from '../utils/db';
 import type { ThemeOccurrence, Theme } from '../types';
 
 interface ThemeOccurrencesState {
@@ -36,14 +36,15 @@ export const useThemeOccurrencesStore = create<ThemeOccurrencesState>((set, get)
   },
 
   createOccurrence: async (occurrenceData) => {
+    await initializeDatabase();
     const now = new Date().toISOString();
-    const occurrence: ThemeOccurrence = {
+    const occurrence = {
       ...occurrenceData,
-      // Don't set id - let Dexie auto-increment it (++id in schema)
+      themeId: Number(occurrenceData.themeId),
+      interviewId: Number(occurrenceData.interviewId),
       createdAt: now,
     };
 
-    // Add returns the auto-generated ID
     const id = await db.themeOccurrences.add(occurrence);
     
     // Update theme stats

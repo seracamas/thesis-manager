@@ -163,7 +163,7 @@ export const Data = () => {
         themes: themeOccurrences
           .filter(occ => occ.interviewId === interview.id)
           .map(occ => {
-            const theme = themes.find(t => t.id === occ.themeId);
+            const theme = themes.find(t => String(t.id) === String(occ.themeId));
             return {
               themeId: occ.themeId,
               themeName: theme?.name || 'Unknown',
@@ -180,7 +180,7 @@ export const Data = () => {
           interviewData,
           themeOccurrences: themeOccurrences.map(occ => ({
             ...occ,
-            themeName: themes.find(t => t.id === occ.themeId)?.name || 'Unknown',
+            themeName: themes.find(t => String(t.id) === String(occ.themeId))?.name || 'Unknown',
           })),
         }),
       });
@@ -282,22 +282,34 @@ export const Data = () => {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const fileType = file.name.split('.').pop()?.toLowerCase() || 'other';
-      let type: 'csv' | 'excel' | 'image' | 'pdf' | 'other' = 'other';
-      if (fileType === 'csv') type = 'csv';
-      else if (['xls', 'xlsx'].includes(fileType)) type = 'excel';
-      else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileType)) type = 'image';
-      else if (fileType === 'pdf') type = 'pdf';
+    if (!file) return;
 
-      await file.arrayBuffer();
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'other';
+      let fileCategory: 'csv' | 'excel' | 'image' | 'pdf' | 'other' = 'other';
+      if (extension === 'csv') fileCategory = 'csv';
+      else if (['xls', 'xlsx'].includes(extension)) fileCategory = 'excel';
+      else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) fileCategory = 'image';
+      else if (extension === 'pdf') fileCategory = 'pdf';
+
       const id = await createDataFile({
         name: file.name,
-        type,
-        metadata: { size: file.size, uploadedAt: new Date().toISOString() },
+        type: fileCategory,
+        fileData: file,
+        metadata: {
+          size: file.size,
+          mimeType: file.type,
+          uploadedAt: new Date().toISOString(),
+        },
         tags: [],
       });
       await addActivity({ type: 'data', itemId: id, action: 'created' });
+      success(`Uploaded ${file.name}`);
+    } catch (err: any) {
+      console.error('File upload failed:', err);
+      showError(err.message || 'Failed to upload file');
+    } finally {
+      e.target.value = '';
     }
   };
 
@@ -329,9 +341,9 @@ export const Data = () => {
             onChange={handleFileUpload}
             multiple
           />
-          <label htmlFor="file-upload" className="cursor-pointer">
-            <Button type="button">Upload File</Button>
-          </label>
+          <Button type="button" onClick={() => document.getElementById('file-upload')?.click()}>
+            Upload File
+          </Button>
           <Button onClick={handleCreate}>New Entry</Button>
         </div>
       </div>

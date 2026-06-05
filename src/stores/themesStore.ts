@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { db } from '../utils/db';
+import { db, initializeDatabase } from '../utils/db';
 import type { Theme } from '../types';
 import { autosaveManager } from '../utils/autosave';
 
@@ -24,7 +24,8 @@ export const useThemesStore = create<ThemesState>((set, get) => ({
   fetchThemes: async () => {
     set({ isLoading: true });
     try {
-      const themes = await db.themes.orderBy('updatedAt').reverse().toArray();
+      await initializeDatabase();
+      const themes = await db.themes.orderBy('createdAt').reverse().toArray();
       // Convert numeric IDs to strings for compatibility with Theme interface
       const themesWithStringIds = themes.map(theme => ({
         ...theme,
@@ -50,6 +51,7 @@ export const useThemesStore = create<ThemesState>((set, get) => ({
   },
 
   createTheme: async (themeData) => {
+    await initializeDatabase();
     const now = new Date().toISOString();
     // Create theme object without id - Dexie will auto-generate numeric ID
     const themeToAdd: any = {

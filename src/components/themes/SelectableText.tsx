@@ -24,7 +24,7 @@ export const SelectableText = ({
   const textRef = useRef<HTMLDivElement>(null);
   const { createOccurrence } = useThemeOccurrencesStore();
   const { themes } = useThemesStore();
-  const { success } = useToastStore();
+  const { success, error: showError } = useToastStore();
 
   // Get context around selected text
   const getContext = (start: number, end: number): string => {
@@ -118,14 +118,18 @@ export const SelectableText = ({
   const handleTag = async (themeId: string) => {
     if (!selectedRange) return;
 
-    // Convert themeId to number for comparison (new schema uses number IDs)
     const themeIdNum = Number(themeId);
-    const theme = themes.find(t => t.id === themeIdNum);
-    if (!theme) return;
+    const theme = themes.find(t => String(t.id) === String(themeId));
+    if (!theme) {
+      showError('Theme not found. Try refreshing the page.');
+      return;
+    }
 
     // Check if this exact range is already tagged
     const existing = occurrences.find(
-      o => o.startIndex === selectedRange.start && o.endIndex === selectedRange.end && o.themeId === themeIdNum
+      o => o.startIndex === selectedRange.start
+        && o.endIndex === selectedRange.end
+        && String(o.themeId) === String(themeId)
     );
 
     if (existing) {
@@ -151,8 +155,9 @@ export const SelectableText = ({
       setPopoverPosition(null);
       window.getSelection()?.removeAllRanges();
       onOccurrenceChange?.();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to tag theme:', error);
+      showError(error.message || 'Failed to tag theme');
     }
   };
 
@@ -195,7 +200,7 @@ export const SelectableText = ({
                   borderBottom: `2px solid ${part.color}`,
                   padding: '2px 0',
                 }}
-                title={themes.find(t => t.id === part.themeId)?.name || ''}
+                title={themes.find(t => String(t.id) === String(part.themeId))?.name || ''}
               >
                 {part.text}
               </mark>
